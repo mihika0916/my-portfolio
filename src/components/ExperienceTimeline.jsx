@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { skillGroups } from '../data/portfolioData.js';
 import SkillChip from './SkillChip.jsx';
 
-const START_YEAR = 2020;
+const START_YEAR = 2004;
 const END_YEAR = 2026;
 const PX_PER_MONTH = 58;
 const CARD_WIDTH = 250;
