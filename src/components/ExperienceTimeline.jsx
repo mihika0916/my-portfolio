@@ -9,7 +9,9 @@ import {
   GraduationCap,
   Map as MapIcon,
   Maximize2,
+  Minus,
   MonitorSmartphone,
+  Plus,
   Presentation,
   RotateCcw,
   Smartphone,
@@ -25,8 +27,11 @@ import SkillChip from './SkillChip.jsx';
 
 const START_YEAR = 2004;
 const END_YEAR = 2026;
-const PX_PER_MONTH = 58;
+const BASE_PX_PER_MONTH = 58;
 const CARD_WIDTH = 250;
+const MIN_ZOOM = 0.72;
+const MAX_ZOOM = 1.18;
+const ZOOM_STEP = 0.08;
 
 const toMonthIndex = (dateString) => {
   const date = new Date(`${dateString}T00:00:00`);
@@ -97,12 +102,12 @@ const skillIconMap = new Map([
   ['Research', BookOpen],
 ]);
 
-function assignTimelineLayout(items) {
+function assignTimelineLayout(items, pxPerMonth) {
   const sideLaneEnds = {
     top: [],
     bottom: [],
   };
-  const visualCardMonths = Math.ceil(CARD_WIDTH / PX_PER_MONTH);
+  const visualCardMonths = Math.ceil(CARD_WIDTH / pxPerMonth);
   let experienceIndex = 0;
 
   return [...items]
@@ -157,9 +162,12 @@ function ExperienceTimeline({ items }) {
   const scrollerRef = useRef(null);
   const detailRef = useRef(null);
   const cardRefs = useRef(new Map());
+  const zoomCenterMonthRef = useRef(null);
   const [activeSlug, setActiveSlug] = useState(null);
+  const [timelineZoom, setTimelineZoom] = useState(0.86);
+  const pxPerMonth = Math.round(BASE_PX_PER_MONTH * timelineZoom);
   const totalMonths = (END_YEAR - START_YEAR + 1) * 12;
-  const timelineWidth = totalMonths * PX_PER_MONTH;
+  const timelineWidth = totalMonths * pxPerMonth;
   const activeItem = items.find((item) => item.slug === activeSlug);
   const timelineItems = useMemo(
     () => items.filter((item) => item.type === 'experience' || item.type === 'education'),
@@ -189,7 +197,10 @@ function ExperienceTimeline({ items }) {
     [totalMonths]
   );
 
-  const laidOutItems = useMemo(() => assignTimelineLayout(timelineItems), [timelineItems]);
+  const laidOutItems = useMemo(
+    () => assignTimelineLayout(timelineItems, pxPerMonth),
+    [timelineItems, pxPerMonth]
+  );
   const maxTopLevel = laidOutItems.reduce(
     (max, item) => (item.side === 'top' ? Math.max(max, item.level) : max),
     0
@@ -198,8 +209,21 @@ function ExperienceTimeline({ items }) {
     (max, item) => (item.side === 'bottom' ? Math.max(max, item.level) : max),
     0
   );
-  const axisTop = 258 + maxTopLevel * 112;
-  const timelineHeight = axisTop + 264 + maxBottomLevel * 112;
+  const laneGap = 96;
+  const axisTop = 178 + maxTopLevel * laneGap;
+  const timelineHeight = axisTop + 226 + maxBottomLevel * laneGap;
+
+  const updateZoom = (direction) => {
+    const scroller = scrollerRef.current;
+    if (scroller) {
+      zoomCenterMonthRef.current = (scroller.scrollLeft + scroller.clientWidth / 2) / pxPerMonth;
+    }
+
+    setTimelineZoom((current) => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current + direction * ZOOM_STEP));
+      return Number(next.toFixed(2));
+    });
+  };
 
   const scrollToToday = () => {
     const scroller = scrollerRef.current;
@@ -210,7 +234,7 @@ function ExperienceTimeline({ items }) {
       totalMonths - 1,
       Math.max(0, (today.getFullYear() - START_YEAR) * 12 + today.getMonth())
     );
-    const target = Math.max(0, todayIndex * PX_PER_MONTH - scroller.clientWidth + 340);
+    const target = Math.max(0, todayIndex * pxPerMonth - scroller.clientWidth + 340);
     scroller.scrollTo({ left: target, behavior: 'smooth' });
   };
 
@@ -218,7 +242,7 @@ function ExperienceTimeline({ items }) {
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
-    const recentStart = toMonthIndex('2024-01-01') * PX_PER_MONTH;
+    const recentStart = toMonthIndex('2024-01-01') * pxPerMonth;
     scroller.scrollTo({ left: recentStart, behavior: 'smooth' });
   };
 
@@ -256,6 +280,22 @@ function ExperienceTimeline({ items }) {
   }, []);
 
   useEffect(() => {
+    const scroller = scrollerRef.current;
+    const centerMonth = zoomCenterMonthRef.current;
+    if (!scroller || centerMonth === null) return undefined;
+
+    const id = window.requestAnimationFrame(() => {
+      scroller.scrollTo({
+        left: Math.max(0, centerMonth * pxPerMonth - scroller.clientWidth / 2),
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      });
+      zoomCenterMonthRef.current = null;
+    });
+
+    return () => window.cancelAnimationFrame(id);
+  }, [pxPerMonth]);
+
+  useEffect(() => {
     if (!activeSlug) return;
 
     const id = window.setTimeout(() => {
@@ -283,6 +323,7 @@ function ExperienceTimeline({ items }) {
             height: `${timelineHeight}px`,
             '--axis-top': `${axisTop}px`,
             '--timeline-height': `${timelineHeight}px`,
+            '--lane-gap': `${laneGap}px`,
           }}
         >
           <div className="month-grid" aria-hidden="true">
@@ -290,7 +331,7 @@ function ExperienceTimeline({ items }) {
               <span
                 className={month % 12 === 0 ? 'month-tick year-month' : 'month-tick'}
                 key={month}
-                style={{ left: `${month * PX_PER_MONTH}px` }}
+                style={{ left: `${month * pxPerMonth}px` }}
               />
             ))}
           </div>
@@ -299,7 +340,7 @@ function ExperienceTimeline({ items }) {
 
           <div className="year-labels" aria-hidden="true">
             {years.map((year) => (
-              <span key={year} style={{ left: `${(year - START_YEAR) * 12 * PX_PER_MONTH}px` }}>
+              <span key={year} style={{ left: `${(year - START_YEAR) * 12 * pxPerMonth}px` }}>
                 {year}
               </span>
             ))}
@@ -307,7 +348,7 @@ function ExperienceTimeline({ items }) {
 
           <ol className="timeline-events" aria-label="Experience timeline">
             {laidOutItems.map((item, index) => {
-              const duration = Math.max(PX_PER_MONTH, (item.endIndex - item.startIndex) * PX_PER_MONTH);
+              const duration = Math.max(pxPerMonth, (item.endIndex - item.startIndex) * pxPerMonth);
               const isActive = item.slug === activeSlug;
               const detailLabel = `Open details for ${item.company} ${item.role}`;
               const handleInteractionKey = (event) => {
@@ -324,7 +365,7 @@ function ExperienceTimeline({ items }) {
                   }`}
                   key={item.slug}
                   style={{
-                    left: `${item.startIndex * PX_PER_MONTH}px`,
+                    left: `${item.startIndex * pxPerMonth}px`,
                     width: `${Math.max(duration, CARD_WIDTH)}px`,
                     '--duration-width': `${duration}px`,
                     '--level': item.level,
@@ -405,7 +446,7 @@ function ExperienceTimeline({ items }) {
                     isStart ? 'is-start' : ''
                   } ${isEnd ? 'is-end' : ''}`}
                   key={item.slug}
-                  style={{ left: `${item.startIndex * PX_PER_MONTH}px` }}
+                  style={{ left: `${item.startIndex * pxPerMonth}px` }}
                   title={`${item.title}, ${dateLabel}`}
                 >
                   {item.href ? (
@@ -435,6 +476,25 @@ function ExperienceTimeline({ items }) {
           <RotateCcw size={16} aria-hidden="true" />
           Today
         </button>
+        <div className="timeline-zoom-controls" aria-label="Timeline zoom controls">
+          <button
+            type="button"
+            onClick={() => updateZoom(-1)}
+            aria-label="Zoom timeline out"
+            disabled={timelineZoom <= MIN_ZOOM}
+          >
+            <Minus size={16} />
+          </button>
+          <span>{Math.round(timelineZoom * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => updateZoom(1)}
+            aria-label="Zoom timeline in"
+            disabled={timelineZoom >= MAX_ZOOM}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
       <div
