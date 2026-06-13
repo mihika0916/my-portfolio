@@ -529,6 +529,51 @@ const archivedProjects = [
 
 export const projects = [
   {
+    slug: 'smoothroute',
+    title: 'SmoothRoute',
+    date: '2026',
+    folderIcon: Map,
+    description:
+      'Route-planning and algorithm comparison tool for delivery routing with time windows.',
+    tags: ['Routing', 'Algorithms', 'Maps'],
+    tools: [
+      { name: 'React', icon: Layers3 },
+      { name: 'Vite', icon: Cpu },
+      { name: 'Leaflet', icon: Map },
+      { name: 'Recharts', icon: Table2 },
+      { name: 'Python', icon: Terminal },
+      { name: 'FastAPI', icon: Server },
+      { name: 'SQLite', icon: Database },
+      { name: 'OR-Tools', icon: Workflow },
+      { name: 'OSRM', icon: Map },
+    ],
+    links: {
+      github: 'https://github.com/mihika0916/smoothRoute',
+      live: 'https://smooth-route.vercel.app',
+      liveLabel: 'Live App',
+    },
+    overview:
+      'A personal routing research project for testing how different algorithms handle delivery schedules when orders have time windows and the number of available drivers changes.',
+    problem:
+      'A friend is exploring a breakfast-to-go subscription business and was thinking about hiring independent delivery drivers instead of relying on third-party delivery apps. That made me curious: if every order has a specific delivery window, how should we schedule drivers, and how do the routes change when there are two drivers versus five? SmoothRoute became a way for me to explore that question before building a real delivery scheduler.',
+    challenges:
+      'I started with Haversine distance because it was simple, but it quickly felt too idealized. In a real city, straight-line distance ignores roads, one-way streets, and even non-traversable areas like the forest near where I live. Adding OSRM made the routes more grounded in actual road travel while still keeping Haversine as a fallback when road data is unavailable.',
+    features: [
+      'Create a delivery scenario by choosing a depot, adding stops manually, or generating random orders.',
+      'Set delivery windows, driver count, service time, routing mode, road snapping, and simulation runs.',
+      'Compare Greedy Earliest Deadline + Nearest Neighbor, Clarke-Wright Savings with time-window repair, and Google OR-Tools VRPTW.',
+      'Review distance, lateness, on-time rate, compute time, route shape, charts, and winner badges.',
+      'Play routes back over simulated time to see how each driver moves through their assigned stops.',
+      'Use OSRM for road-aware stop snapping and route geometry, with Haversine distance as a fallback.',
+    ],
+    built: '',
+    contributions: [],
+    results: [],
+    lessons: '',
+    media: [],
+    resources: [],
+  },
+  {
     slug: 'mazefindvr',
     title: 'MazeFindVR',
     date: 'May 2025 - Dec. 2025',
